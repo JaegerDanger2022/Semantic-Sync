@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+elasticsearch
+httpx
+pydantic
+python-dotenv
+firebase-admin
+anthropic

@@ -1,0 +1,76 @@
+{
+  "name": "semantic-sync",
+  "displayName": "Semantic Sync",
+  "description": "Index local project files into Elasticsearch Serverless and chat via a VS Code sidebar.",
+  "version": "0.0.1",
+  "publisher": "semantic-sync",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onUri"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "semanticSync.authenticate",
+        "title": "Semantic Sync: Authenticate"
+      },
+      {
+        "command": "semanticSync.indexWorkspace",
+        "title": "Semantic Sync: Index Workspace"
+      },
+      {
+        "command": "semanticSync.signOut",
+        "title": "Semantic Sync: Sign Out"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "semanticSync",
+          "title": "Semantic Sync",
+          "icon": "media/semantic-sync.svg"
+        }
+      ]
+    },
+    "views": {
+      "semanticSync": [
+        {
+          "id": "semanticSync.chatView",
+          "name": "Chat",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Semantic Sync",
+      "properties": {}
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./ && node scripts/build.js",
+    "build:webview": "esbuild webview/src/index.tsx --bundle --outfile=media/webview.js --format=iife --platform=browser",
+    "build:webview:prod": "esbuild webview/src/index.tsx --bundle --outfile=media/webview.js --format=iife --platform=browser --minify",
+    "watch": "tsc -watch -p ./",
+    "lint": "echo \"No lint configured\"",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "uuid": "^11.0.5"
+  }
+}

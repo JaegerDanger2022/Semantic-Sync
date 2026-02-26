@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run compile)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\(''scripts'',{}\\), indent=2\\)\\)\")",
+      "Bash(npm run build:webview)",
+      "Bash(.venv/Scripts/pip install anthropic)",
+      "Bash(curl -s http://localhost:8000/docs)"
+    ]
+  }
+}
