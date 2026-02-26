@@ -155,6 +155,8 @@ def require_auth_context(authorization: Optional[str] = Header(default=None)) ->
         get_firebase_app()
         decoded = firebase_auth.verify_id_token(token)
     except Exception as exc:
+        import logging
+        logging.error("Firebase token verification failed: %s | token_prefix=%s", exc, token[:20] if token else "")
         raise HTTPException(status_code=401, detail=f"Invalid Firebase token: {exc}") from exc
     uid = decoded.get("uid")
     if not isinstance(uid, str) or not uid:
@@ -718,6 +720,11 @@ async def chat_stream(request: ChatRequest, auth_ctx: AuthContext = Depends(requ
             yield 'data: {"type":"done"}\n\n'
             return
 
+        if data is None:
+            yield f"data: {_json.dumps({'type': 'error', 'message': 'Kibana returned an empty response (no JSON body).'})}\n\n"
+            yield 'data: {"type":"done"}\n\n'
+            return
+
         steps = extract_steps(data)
         if steps:
             yield f"data: {_json.dumps({'type': 'steps', 'steps': steps})}\n\n"
@@ -759,7 +766,8 @@ async def _call_kibana(url: str, headers: dict, payload: dict):
         async with httpx.AsyncClient(timeout=90) as client:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
-        return response.json(), None
+            data = response.json()
+        return data, None
     except httpx.HTTPStatusError as exc:
         body = exc.response.text[:1000] if exc.response is not None else ""
         return None, f"Kibana HTTP {exc.response.status_code if exc.response else 'unknown'}: {body}"

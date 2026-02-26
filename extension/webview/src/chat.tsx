@@ -52,6 +52,7 @@ export function Chat({ vscode }: ChatProps) {
   const [hasBeenIndexed, setHasBeenIndexed] = useState(false);
   const [traceOpen, setTraceOpen] = useState(false);
   const [projectScope, setProjectScope] = useState<string | null>(null);
+  const [showHint, setShowHint] = useState(true);
   // True from mount until both auth state and usage have been received from the extension.
   // Keeps the index button disabled so a fast click can't fire before we know the user's quota.
   const [isInitialising, setIsInitialising] = useState(true);
@@ -114,6 +115,7 @@ export function Chat({ vscode }: ChatProps) {
     if (indexStatus.status === 'running') {
       return;
     }
+    setIndexStatus(s => ({ ...s, status: 'running', processed: 0, message: 'Starting...' }));
     vscode.postMessage({ type: 'indexWorkspace' });
   };
 
@@ -123,6 +125,14 @@ export function Chat({ vscode }: ChatProps) {
       setHasBeenIndexed(true);
     }
   }, [indexStatus.status]);
+
+  // Auto-hide the hint after 4s when it's the verbose "incremental sync" message
+  useEffect(() => {
+    if (!hasBeenIndexed) { setShowHint(true); return; }
+    setShowHint(true);
+    const t = setTimeout(() => setShowHint(false), 4000);
+    return () => clearTimeout(t);
+  }, [hasBeenIndexed]);
 
   const handleProjectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -194,11 +204,13 @@ export function Chat({ vscode }: ChatProps) {
             Sign out
           </button>
         </div>
-        <div className="index-hint">
-          {hasBeenIndexed
-            ? 'Incremental sync active — saves are indexed automatically. Re-index to pick up new/deleted files or .gitignore changes.'
-            : 'Uses your .gitignore to determine which files to index.'}
-        </div>
+        {showHint && (
+          <div className={`index-hint${hasBeenIndexed ? ' index-hint-fade' : ''}`}>
+            {hasBeenIndexed
+              ? 'Incremental sync active — saves are indexed automatically. Re-index to pick up new/deleted files or .gitignore changes.'
+              : 'Uses your .gitignore to determine which files to index.'}
+          </div>
+        )}
         {usage && <UsageBar usage={usage} />}
         <button
           className="index-button"
@@ -213,11 +225,6 @@ export function Chat({ vscode }: ChatProps) {
         )}
       </div>
       <div className="messages">
-        {projectScope && (
-          <div className="scope-banner">
-            Now chatting about: <strong>{projectScope}</strong>
-          </div>
-        )}
         {messages.length === 0 && !isChatLoading && (
           <div className="empty-hint">
             Ask anything about {projectScope ?? 'your codebase'}.

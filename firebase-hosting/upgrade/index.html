@@ -473,7 +473,9 @@
       try {
         const idToken = await getIdToken();
         if (!idToken) {
-          showError('Could not authenticate. Please open this page from VS Code (click "Upgrade" in the extension sidebar).');
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('plans-section').style.display = 'grid';
+          document.getElementById('coming-soon').style.display = 'block';
           return;
         }
 
@@ -487,7 +489,9 @@
         const usage = await loadUsage(idToken);
         renderUsage(usage, uid);
       } catch (err) {
-        showError('Failed to load account: ' + err.message);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('plans-section').style.display = 'grid';
+        document.getElementById('coming-soon').style.display = 'block';
       }
     })();
   </script>

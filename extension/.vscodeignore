@@ -9,3 +9,8 @@ tsconfig.json
 .gitignore
 plan.md
 webview/**
+scripts/**
+src/**
+package-lock.json
+.env
+.env.*

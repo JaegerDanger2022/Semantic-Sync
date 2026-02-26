@@ -1,8 +1,8 @@
-import * as vscode from 'vscode';
-import type { IndexStatus, UsageInfo } from './extension';
+import * as vscode from "vscode";
+import type { IndexStatus, UsageInfo } from "./extension";
 
 type ChatMessage = {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 };
 
@@ -15,7 +15,7 @@ type ChatResponse = {
   steps?: AgentStep[];
 };
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = "https://semantic-sync-production.up.railway.app";
 const CHAT_URL = `${API_BASE}/api/chat`;
 const CHAT_STREAM_URL = `${API_BASE}/api/chat/stream`;
 const PROJECTS_URL = `${API_BASE}/api/projects`;
@@ -23,7 +23,7 @@ const PROJECTS_URL = `${API_BASE}/api/projects`;
 export class ChatViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private messages: ChatMessage[] = [];
-  private indexStatus: IndexStatus = { status: 'idle', processed: 0, total: 0 };
+  private indexStatus: IndexStatus = { status: "idle", processed: 0, total: 0 };
   private isChatLoading = false;
   private activeProject: string | null = null;
   private projects: string[] = [];
@@ -32,7 +32,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     private readonly extensionUri: vscode.Uri,
     private readonly output: vscode.OutputChannel,
     private readonly requestIndexWorkspace: (
-      onStatus?: (status: IndexStatus) => void
+      onStatus?: (status: IndexStatus) => void,
     ) => Promise<void>,
     private readonly getAuthHeaders: () => Promise<Record<string, string>>,
     private readonly isAuthenticated: () => boolean,
@@ -40,9 +40,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     private readonly fetchUsage: () => Promise<UsageInfo>,
     /** Called with project entries from /api/projects so globalState can be restored */
     private readonly restoreWorkspaceEntries: (
-      entries: Array<{ workspace_id: string; git_remote?: string; local_root_path?: string }>
+      entries: Array<{
+        workspace_id: string;
+        git_remote?: string;
+        local_root_path?: string;
+      }>,
     ) => Promise<void>,
-    private readonly doSignOut: () => Promise<void>
+    private readonly doSignOut: () => Promise<void>,
   ) {}
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -50,7 +54,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [this.extensionUri]
+      localResourceRoots: [this.extensionUri],
     };
 
     webviewView.webview.html = this.getHtml(webviewView.webview);
@@ -61,30 +65,36 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.postMessages();
       this.postIndexStatus(this.indexStatus);
       this.postChatLoading(this.isChatLoading);
-      this.view?.webview.postMessage({ type: 'setAuthState', isSignedIn: this.isAuthenticated() });
+      this.view?.webview.postMessage({
+        type: "setAuthState",
+        isSignedIn: this.isAuthenticated(),
+      });
       void this.refreshUsage();
       void this.refreshProjects();
     });
 
     webviewView.webview.onDidReceiveMessage(async (message) => {
-      if (message?.type === 'ready') {
+      if (message?.type === "ready") {
         this.postMessages();
         this.postIndexStatus(this.indexStatus);
         this.postChatLoading(this.isChatLoading);
-        this.view?.webview.postMessage({ type: 'setAuthState', isSignedIn: this.isAuthenticated() });
+        this.view?.webview.postMessage({
+          type: "setAuthState",
+          isSignedIn: this.isAuthenticated(),
+        });
         void this.refreshUsage();
         void this.refreshProjects();
         return;
       }
-      if (message?.type === 'sendMessage') {
-        const content = String(message.text || '').trim();
+      if (message?.type === "sendMessage") {
+        const content = String(message.text || "").trim();
         if (!content) {
           return;
         }
         await this.handleUserMessage(content);
         return;
       }
-      if (message?.type === 'indexWorkspace') {
+      if (message?.type === "indexWorkspace") {
         await this.requestIndexWorkspace((status) => {
           this.indexStatus = status;
           this.postIndexStatus(status);
@@ -94,36 +104,45 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         void this.refreshProjects();
         return;
       }
-      if (message?.type === 'signInWithGitHub') {
+      if (message?.type === "signInWithGitHub") {
         try {
           await this.triggerAuth();
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
-          vscode.window.showErrorMessage(`Semantic Sync sign-in failed: ${msg}`);
-          this.view?.webview.postMessage({ type: 'setAuthState', isSignedIn: false });
+          vscode.window.showErrorMessage(
+            `Semantic Sync sign-in failed: ${msg}`,
+          );
+          this.view?.webview.postMessage({
+            type: "setAuthState",
+            isSignedIn: false,
+          });
         }
         return;
       }
-      if (message?.type === 'signOut') {
+      if (message?.type === "signOut") {
         await this.doSignOut();
         this.messages = [];
         this.projects = [];
         this.activeProject = null;
-        this.view?.webview.postMessage({ type: 'setAuthState', isSignedIn: false });
-        this.view?.webview.postMessage({ type: 'setUsage', usage: null });
-        this.view?.webview.postMessage({ type: 'setProjects', projects: [] });
+        this.view?.webview.postMessage({
+          type: "setAuthState",
+          isSignedIn: false,
+        });
+        this.view?.webview.postMessage({ type: "setUsage", usage: null });
+        this.view?.webview.postMessage({ type: "setProjects", projects: [] });
         return;
       }
-      if (message?.type === 'filterProject') {
-        const newProject = typeof message.project === 'string' ? message.project : null;
+      if (message?.type === "filterProject") {
+        const newProject =
+          typeof message.project === "string" ? message.project : null;
         if (newProject !== this.activeProject) {
           this.activeProject = newProject;
           // Clear history so the agent context is fresh for the new scope
           this.messages = [];
           this.postMessages();
           this.postTrace([]);
-          const label = newProject ?? 'All projects';
-          this.view?.webview.postMessage({ type: 'setProjectScope', label });
+          const label = newProject ?? "All projects";
+          this.view?.webview.postMessage({ type: "setProjectScope", label });
         }
         return;
       }
@@ -131,7 +150,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   public notifySignedIn(): void {
-    this.view?.webview.postMessage({ type: 'setAuthState', isSignedIn: true });
+    this.view?.webview.postMessage({ type: "setAuthState", isSignedIn: true });
     // Restore globalState workspace entries from Firestore immediately after sign-in
     // so the user isn't re-prompted for workspace names they've already confirmed.
     void this.refreshUsage();
@@ -139,17 +158,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   public notifySignedOut(): void {
-    this.view?.webview.postMessage({ type: 'setAuthState', isSignedIn: false });
+    this.view?.webview.postMessage({ type: "setAuthState", isSignedIn: false });
   }
 
   private async handleUserMessage(content: string): Promise<void> {
     const workspaceId = this.getWorkspaceId();
     if (!workspaceId) {
-      vscode.window.showErrorMessage('Semantic Sync: No workspace folder is open.');
+      vscode.window.showErrorMessage(
+        "Semantic Sync: No workspace folder is open.",
+      );
       return;
     }
 
-    this.messages.push({ role: 'user', content });
+    this.messages.push({ role: "user", content });
     this.postMessages();
     this.postTrace([]);
     this.isChatLoading = true;
@@ -171,11 +192,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private async handleStreamingChat(
     workspaceId: string,
     content: string,
-    authHeaders: Record<string, string>
+    authHeaders: Record<string, string>,
   ): Promise<void> {
     const response = await fetch(CHAT_STREAM_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({
         workspace_id: workspaceId,
         message: content,
@@ -189,30 +210,36 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
 
     if (!response.body) {
-      throw new Error('No response body from stream endpoint');
+      throw new Error("No response body from stream endpoint");
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
-    let streamingReply = '';
+    let buffer = "";
+    let streamingReply = "";
 
     // Add a placeholder assistant message that we'll update as chunks arrive
-    this.messages.push({ role: 'assistant', content: '' });
+    this.messages.push({ role: "assistant", content: "" });
     const replyIndex = this.messages.length - 1;
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) { break; }
+      if (done) {
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';  // keep incomplete line
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? ""; // keep incomplete line
 
       for (const line of lines) {
-        if (!line.startsWith('data: ')) { continue; }
+        if (!line.startsWith("data: ")) {
+          continue;
+        }
         const raw = line.slice(6).trim();
-        if (!raw) { continue; }
+        if (!raw) {
+          continue;
+        }
 
         let event: Record<string, unknown>;
         try {
@@ -223,28 +250,45 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
         const type = event.type as string;
 
-        if (type === 'status') {
+        if (type === "status") {
           // Forward the thinking indicator to the webview
-          this.view?.webview.postMessage({ type: 'setChatStatus', message: event.message });
-        } else if (type === 'steps') {
-          this.postTrace(Array.isArray(event.steps) ? event.steps as AgentStep[] : []);
-        } else if (type === 'chunk') {
+          this.view?.webview.postMessage({
+            type: "setChatStatus",
+            message: event.message,
+          });
+        } else if (type === "steps") {
+          this.postTrace(
+            Array.isArray(event.steps) ? (event.steps as AgentStep[]) : [],
+          );
+        } else if (type === "chunk") {
           // Append chunk to the in-progress assistant message for typewriter effect
           streamingReply += event.text as string;
-          this.messages[replyIndex] = { role: 'assistant', content: streamingReply };
+          this.messages[replyIndex] = {
+            role: "assistant",
+            content: streamingReply,
+          };
           this.postMessages();
-        } else if (type === 'reply') {
+        } else if (type === "reply") {
           // Final full reply — authoritative text, overwrite chunks in case of any gap
-          this.messages[replyIndex] = { role: 'assistant', content: event.text as string };
+          this.messages[replyIndex] = {
+            role: "assistant",
+            content: event.text as string,
+          };
           this.postMessages();
-        } else if (type === 'error') {
-          const errMsg = (event.message as string) || 'Unknown error';
+        } else if (type === "error") {
+          const errMsg = (event.message as string) || "Unknown error";
           this.output.appendLine(`Chat stream error: ${errMsg}`);
-          this.messages[replyIndex] = { role: 'assistant', content: `Error: ${errMsg}` };
+          this.messages[replyIndex] = {
+            role: "assistant",
+            content: `Error: ${errMsg}`,
+          };
           this.postMessages();
-        } else if (type === 'done') {
+        } else if (type === "done") {
           // Clear the thinking indicator
-          this.view?.webview.postMessage({ type: 'setChatStatus', message: null });
+          this.view?.webview.postMessage({
+            type: "setChatStatus",
+            message: null,
+          });
         }
       }
     }
@@ -254,48 +298,58 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     if (!this.view) {
       return;
     }
-    this.view.webview.postMessage({ type: 'setMessages', messages: this.messages });
+    this.view.webview.postMessage({
+      type: "setMessages",
+      messages: this.messages,
+    });
   }
 
   private postIndexStatus(status: IndexStatus): void {
     if (!this.view) {
       return;
     }
-    this.view.webview.postMessage({ type: 'setIndexStatus', status });
+    this.view.webview.postMessage({ type: "setIndexStatus", status });
   }
 
   private postChatLoading(isLoading: boolean): void {
     if (!this.view) {
       return;
     }
-    this.view.webview.postMessage({ type: 'setChatLoading', isLoading });
+    this.view.webview.postMessage({ type: "setChatLoading", isLoading });
   }
 
   private postTrace(steps: AgentStep[]): void {
     if (!this.view) {
       return;
     }
-    this.view.webview.postMessage({ type: 'setTrace', steps });
+    this.view.webview.postMessage({ type: "setTrace", steps });
   }
 
   private async refreshUsage(): Promise<void> {
     if (!this.isAuthenticated()) {
       // Not signed in — still resolve isInitialising so the webview doesn't hang on "Loading..."
-      this.view?.webview.postMessage({ type: 'setUsage', usage: null });
+      this.view?.webview.postMessage({ type: "setUsage", usage: null });
       return;
     }
     try {
       const usage = await this.fetchUsage();
-      this.view?.webview.postMessage({ type: 'setUsage', usage });
+      this.view?.webview.postMessage({ type: "setUsage", usage });
     } catch (err) {
       // Always send setUsage (even null) so isInitialising clears in the webview.
-      this.view?.webview.postMessage({ type: 'setUsage', usage: null });
+      this.view?.webview.postMessage({ type: "setUsage", usage: null });
       // If the error is an auth failure (stale token / deleted account), clear globalState
       // and drop to sign-in screen — prevents an infinite "Loading..." on next reload.
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('401') || msg.includes('403') || msg.includes('Invalid Firebase token')) {
+      if (
+        msg.includes("401") ||
+        msg.includes("403") ||
+        msg.includes("Invalid Firebase token")
+      ) {
         void this.doSignOut();
-        this.view?.webview.postMessage({ type: 'setAuthState', isSignedIn: false });
+        this.view?.webview.postMessage({
+          type: "setAuthState",
+          isSignedIn: false,
+        });
       }
     }
   }
@@ -306,24 +360,40 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
     try {
       const authHeaders = await this.getAuthHeaders();
-      const result = await postJson(PROJECTS_URL, undefined, authHeaders, 'GET') as {
-        projects: Array<{ workspace_id: string; git_remote?: string; local_root_path?: string; last_ingest_at?: string }>
+      const result = (await postJson(
+        PROJECTS_URL,
+        undefined,
+        authHeaders,
+        "GET",
+      )) as {
+        projects: Array<{
+          workspace_id: string;
+          git_remote?: string;
+          local_root_path?: string;
+          last_ingest_at?: string;
+        }>;
       };
       if (result && Array.isArray(result.projects)) {
         // Restore globalState so this machine doesn't re-prompt for known workspaces
         void this.restoreWorkspaceEntries(result.projects);
         // Extract just the IDs for the dropdown
         this.projects = result.projects.map((p) => p.workspace_id);
-        this.view?.webview.postMessage({ type: 'setProjects', projects: this.projects });
+        this.view?.webview.postMessage({
+          type: "setProjects",
+          projects: this.projects,
+        });
         // Check if the currently open workspace has been indexed before (even on another machine).
         // Match by local_root_path (same machine) — cross-machine match isn't possible without
         // knowing the remote slug here, so we rely on same-machine path match.
         const folders = vscode.workspace.workspaceFolders;
         const currentRootPath = folders?.[0]?.uri.fsPath;
         const hasBeenIndexed = result.projects.some(
-          (p) => !!p.last_ingest_at && p.local_root_path === currentRootPath
+          (p) => !!p.last_ingest_at && p.local_root_path === currentRootPath,
         );
-        this.view?.webview.postMessage({ type: 'setHasBeenIndexed', hasBeenIndexed });
+        this.view?.webview.postMessage({
+          type: "setHasBeenIndexed",
+          hasBeenIndexed,
+        });
       }
     } catch {
       // Non-critical — swallow errors silently
@@ -341,15 +411,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private getHtml(webview: vscode.Webview): string {
     const nonce = getNonce();
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'media', 'webview.js')
+      vscode.Uri.joinPath(this.extensionUri, "media", "webview.js"),
     );
 
     const csp = [
       `default-src 'none';`,
       `img-src ${webview.cspSource} https:;`,
       `style-src ${webview.cspSource} 'unsafe-inline';`,
-      `script-src 'nonce-${nonce}';`
-    ].join(' ');
+      `script-src 'nonce-${nonce}';`,
+    ].join(" ");
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -412,6 +482,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       font-size: 11px;
       color: var(--vscode-descriptionForeground);
       opacity: 0.8;
+      transition: opacity 1s ease;
+    }
+    .index-hint-fade {
+      animation: hint-fade 4s ease forwards;
+    }
+    @keyframes hint-fade {
+      0%   { opacity: 0.8; }
+      60%  { opacity: 0.8; }
+      100% { opacity: 0; }
     }
     .project-filter-select {
       width: 100%;
@@ -492,15 +571,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       flex-direction: column;
       gap: 10px;
     }
-    .scope-banner {
-      font-size: 11px;
-      color: var(--vscode-descriptionForeground);
-      background: var(--vscode-editorWidget-background);
-      border: 1px solid var(--vscode-panel-border);
-      border-radius: 4px;
-      padding: 4px 8px;
-      text-align: center;
-    }
     .empty-hint {
       font-size: 12px;
       color: var(--vscode-descriptionForeground);
@@ -559,21 +629,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       font-size: 11px;
     }
     .citation {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
+      display: inline;
       font-size: 10px;
-      border-radius: 4px;
+      border-radius: 3px;
       border: 1px solid var(--vscode-panel-border);
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
-      padding: 1px 5px;
-      vertical-align: middle;
+      padding: 1px 4px;
+      vertical-align: baseline;
       line-height: 1.4;
-      max-width: 100%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      word-break: break-all;
     }
     .citation-proj { font-weight: 600; opacity: 0.85; }
     .citation-sep { opacity: 0.5; margin: 0 1px; }
@@ -726,28 +791,31 @@ async function postJson(
   url: string,
   body: unknown,
   extraHeaders?: Record<string, string>,
-  method: 'POST' | 'GET' = 'POST'
+  method: "POST" | "GET" = "POST",
 ): Promise<unknown> {
-  const isGet = method === 'GET';
+  const isGet = method === "GET";
   const response = await fetch(url, {
     method,
     headers: {
-      ...(!isGet ? { 'Content-Type': 'application/json' } : {}),
-      ...(extraHeaders || {})
+      ...(!isGet ? { "Content-Type": "application/json" } : {}),
+      ...(extraHeaders || {}),
     },
-    ...(!isGet ? { body: JSON.stringify(body) } : {})
+    ...(!isGet ? { body: JSON.stringify(body) } : {}),
   });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`HTTP ${response.status}: ${text}`);
   }
-  const contentType = response.headers.get('content-type') || '';
-  return contentType.includes('application/json') ? response.json() : response.text();
+  const contentType = response.headers.get("content-type") || "";
+  return contentType.includes("application/json")
+    ? response.json()
+    : response.text();
 }
 
 function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let text = "";
+  const possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < 32; i += 1) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }

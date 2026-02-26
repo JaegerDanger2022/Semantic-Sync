@@ -14,7 +14,7 @@ import {
   DEFAULT_GITIGNORE_CONTENT,
 } from "./gitignore";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://semantic-sync-production.up.railway.app";
 const INGEST_URL = `${API_BASE}/api/ingest`;
 const PRUNE_URL = `${API_BASE}/api/prune-workspace-scope`;
 const SUMMARY_URL = `${API_BASE}/api/summarize-workspace`;
@@ -389,7 +389,12 @@ async function indexWorkspace(
     vscode.workspace.asRelativePath(uri, false).replace(/\\/g, "/"),
   );
   let processed = 0;
-  onStatus?.({ status: "running", processed: 0, total: files.length, message: "Checking for changes..." });
+  onStatus?.({
+    status: "running",
+    processed: 0,
+    total: files.length,
+    message: "Checking for changes...",
+  });
   statusBar.text = "$(sync~spin) Semantic Sync: Indexing...";
   statusBar.show();
 
@@ -399,18 +404,20 @@ async function indexWorkspace(
   // changed or new files. This prevents redundant Anthropic summary calls.
   let existingHashes: Record<string, string> = {};
   try {
-    const hashResult = await postJson(
+    const hashResult = (await postJson(
       `${HASHES_URL}?workspace_id=${encodeURIComponent(workspaceId)}`,
       undefined,
       authHeaders,
       "GET",
-    ) as { hashes: Record<string, string> };
+    )) as { hashes: Record<string, string> };
     if (hashResult?.hashes && typeof hashResult.hashes === "object") {
       existingHashes = hashResult.hashes;
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    output.appendLine(`Hash fetch failed (will re-index all files): ${message}`);
+    output.appendLine(
+      `Hash fetch failed (will re-index all files): ${message}`,
+    );
   }
 
   // Read all files and filter to only those whose content has changed.
@@ -420,7 +427,9 @@ async function indexWorkspace(
   for (const uri of files) {
     const bytes = await vscode.workspace.fs.readFile(uri);
     const content = Buffer.from(bytes).toString("utf8");
-    const relativePath = vscode.workspace.asRelativePath(uri, false).replace(/\\/g, "/");
+    const relativePath = vscode.workspace
+      .asRelativePath(uri, false)
+      .replace(/\\/g, "/");
     if (md5(content) !== existingHashes[relativePath]) {
       changedFiles.push({ file_path: relativePath, content });
     }
@@ -434,7 +443,9 @@ async function indexWorkspace(
   if (changedFiles.length === 0) {
     statusBar.hide();
     output.appendLine("Nothing to index — all files are up to date.");
-    vscode.window.showInformationMessage("Semantic Sync: All files are up to date.");
+    vscode.window.showInformationMessage(
+      "Semantic Sync: All files are up to date.",
+    );
     onStatus?.({
       status: "done",
       processed: 0,
@@ -449,9 +460,10 @@ async function indexWorkspace(
     status: "running",
     processed: 0,
     total: changedFiles.length,
-    message: skippedCount > 0
-      ? `Indexing ${changedFiles.length} changed files (${skippedCount} unchanged)`
-      : "Indexing source files",
+    message:
+      skippedCount > 0
+        ? `Indexing ${changedFiles.length} changed files (${skippedCount} unchanged)`
+        : "Indexing source files",
   });
 
   for (let i = 0; i < changedFiles.length; i += batchSize) {
@@ -482,10 +494,22 @@ async function indexWorkspace(
           const upgradeUrl = `${upgradeBase}?token=${encodeURIComponent(authState.idToken)}`;
           vscode.env.openExternal(vscode.Uri.parse(upgradeUrl));
         }
-        onStatus?.({ status: "error", processed, total: changedFiles.length, message: "Token limit reached. Upgrade to continue." });
+        onStatus?.({
+          status: "error",
+          processed,
+          total: changedFiles.length,
+          message: "Token limit reached. Upgrade to continue.",
+        });
       } else {
-        vscode.window.showErrorMessage(`Semantic Sync ingest failed: ${message}`);
-        onStatus?.({ status: "error", processed, total: changedFiles.length, message });
+        vscode.window.showErrorMessage(
+          `Semantic Sync ingest failed: ${message}`,
+        );
+        onStatus?.({
+          status: "error",
+          processed,
+          total: changedFiles.length,
+          message,
+        });
       }
       return;
     }
@@ -574,10 +598,11 @@ async function indexWorkspace(
   onStatus?.({
     status: "done",
     processed,
-    total: files.length,  // use original count for "X files indexed" display
-    message: skippedCount > 0
-      ? `Updated ${processed} files (${skippedCount} unchanged)`
-      : "Workspace summary updated",
+    total: files.length, // use original count for "X files indexed" display
+    message:
+      skippedCount > 0
+        ? `Updated ${processed} files (${skippedCount} unchanged)`
+        : "Workspace summary updated",
     prunedCount,
   });
 }

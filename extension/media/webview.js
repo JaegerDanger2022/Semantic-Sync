@@ -23606,6 +23606,7 @@
     const [hasBeenIndexed, setHasBeenIndexed] = (0, import_react.useState)(false);
     const [traceOpen, setTraceOpen] = (0, import_react.useState)(false);
     const [projectScope, setProjectScope] = (0, import_react.useState)(null);
+    const [showHint, setShowHint] = (0, import_react.useState)(true);
     const [isInitialising, setIsInitialising] = (0, import_react.useState)(true);
     const initialisedRef = (0, import_react.useRef)({ auth: false, usage: false });
     (0, import_react.useEffect)(() => {
@@ -23661,6 +23662,7 @@
       if (indexStatus.status === "running") {
         return;
       }
+      setIndexStatus((s) => ({ ...s, status: "running", processed: 0, message: "Starting..." }));
       vscode2.postMessage({ type: "indexWorkspace" });
     };
     (0, import_react.useEffect)(() => {
@@ -23668,6 +23670,15 @@
         setHasBeenIndexed(true);
       }
     }, [indexStatus.status]);
+    (0, import_react.useEffect)(() => {
+      if (!hasBeenIndexed) {
+        setShowHint(true);
+        return;
+      }
+      setShowHint(true);
+      const t = setTimeout(() => setShowHint(false), 4e3);
+      return () => clearTimeout(t);
+    }, [hasBeenIndexed]);
     const handleProjectChange = (event) => {
       const value = event.target.value;
       const project = value === "" ? null : value;
@@ -23726,7 +23737,7 @@
         title: "Sign out"
       },
       "Sign out"
-    )), /* @__PURE__ */ import_react.default.createElement("div", { className: "index-hint" }, hasBeenIndexed ? "Incremental sync active \u2014 saves are indexed automatically. Re-index to pick up new/deleted files or .gitignore changes." : "Uses your .gitignore to determine which files to index."), usage && /* @__PURE__ */ import_react.default.createElement(UsageBar, { usage }), /* @__PURE__ */ import_react.default.createElement(
+    )), showHint && /* @__PURE__ */ import_react.default.createElement("div", { className: `index-hint${hasBeenIndexed ? " index-hint-fade" : ""}` }, hasBeenIndexed ? "Incremental sync active \u2014 saves are indexed automatically. Re-index to pick up new/deleted files or .gitignore changes." : "Uses your .gitignore to determine which files to index."), usage && /* @__PURE__ */ import_react.default.createElement(UsageBar, { usage }), /* @__PURE__ */ import_react.default.createElement(
       "button",
       {
         className: "index-button",
@@ -23734,7 +23745,7 @@
         disabled: isInitialising || indexStatus.status === "running"
       },
       isInitialising ? "Loading..." : indexStatus.status === "running" ? "Indexing..." : hasBeenIndexed ? "Re-index Workspace" : "Index Workspace"
-    ), /* @__PURE__ */ import_react.default.createElement("div", { className: `index-status ${indexStatus.status}` }, getStatusLabel()), typeof indexStatus.prunedCount === "number" && indexStatus.status === "done" && /* @__PURE__ */ import_react.default.createElement("div", { className: "index-status" }, "Pruned ", indexStatus.prunedCount, " stale docs this run.")), /* @__PURE__ */ import_react.default.createElement("div", { className: "messages" }, projectScope && /* @__PURE__ */ import_react.default.createElement("div", { className: "scope-banner" }, "Now chatting about: ", /* @__PURE__ */ import_react.default.createElement("strong", null, projectScope)), messages.length === 0 && !isChatLoading && /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-hint" }, "Ask anything about ", projectScope ?? "your codebase", "."), messages.map((msg, idx) => {
+    ), /* @__PURE__ */ import_react.default.createElement("div", { className: `index-status ${indexStatus.status}` }, getStatusLabel()), typeof indexStatus.prunedCount === "number" && indexStatus.status === "done" && /* @__PURE__ */ import_react.default.createElement("div", { className: "index-status" }, "Pruned ", indexStatus.prunedCount, " stale docs this run.")), /* @__PURE__ */ import_react.default.createElement("div", { className: "messages" }, messages.length === 0 && !isChatLoading && /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-hint" }, "Ask anything about ", projectScope ?? "your codebase", "."), messages.map((msg, idx) => {
       const isStreamingThis = isChatLoading && msg.role === "assistant" && idx === messages.length - 1;
       if (msg.role === "assistant") {
         return /* @__PURE__ */ import_react.default.createElement("div", { key: `${msg.role}-${idx}`, className: "message assistant" }, /* @__PURE__ */ import_react.default.createElement(

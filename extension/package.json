@@ -3,10 +3,25 @@
   "displayName": "Semantic Sync",
   "description": "Index local project files into Elasticsearch Serverless and chat via a VS Code sidebar.",
   "version": "0.0.1",
-  "publisher": "semantic-sync",
+  "publisher": "MartinMensah-Solomon",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JaegerDanger2022/Semantic-Sync.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "screenshots": [
+    {
+      "path": "media/screenshot1.png",
+      "description": "Chat with your codebase from the VS Code sidebar"
+    }
+  ],
   "categories": [
     "Other"
   ],
