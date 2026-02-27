@@ -666,9 +666,7 @@ async def chat_stream(request: ChatRequest, auth_ctx: AuthContext = Depends(requ
     context_block = "\n\n".join(d["content"] for d in source_docs)
     scoped_input = (
         f"The following documents are the ONLY source of truth for this question. "
-        f"Do not use any other knowledge or documents.\n"
-        f"Every statement that references a file MUST include a citation in this exact format: "
-        f"[Project: <project_name> | File: <file_path>]\n\n"
+        f"Do not use any other knowledge or documents.\n\n"
         f"{context_block}\n\n"
         f"user_question: {request.message}"
     )
@@ -786,9 +784,7 @@ async def chat(request: ChatRequest, auth_ctx: AuthContext = Depends(require_aut
     context_block = "\n\n".join(d["content"] for d in source_docs)
     scoped_input = (
         f"The following documents are the ONLY source of truth for this question. "
-        f"Do not use any other knowledge or documents.\n"
-        f"Every statement that references a file MUST include a citation in this exact format: "
-        f"[Project: <project_name> | File: <file_path>]\n\n"
+        f"Do not use any other knowledge or documents.\n\n"
         f"{context_block}\n\n"
         f"user_question: {request.message}"
     )
