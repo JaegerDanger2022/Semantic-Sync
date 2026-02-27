@@ -656,18 +656,8 @@ async def chat_stream(request: ChatRequest, auth_ctx: AuthContext = Depends(requ
         "kbn-xsrf": "true",
         "Content-Type": "application/json",
     }
-    # Hard-fetch docs from Elasticsearch with a strict filter — the agent only
-    # sees what we give it and cannot stray into other workspaces.
-    # Each doc's `content` field is already formatted as:
-    #   [Project: owner/repo | File: path]\nSummary: ...\n\n```\n<snippet>\n```
-    es = get_es_client()
-    source_docs = fetch_workspace_source_docs(es, auth_ctx.uid, request.workspace_id)
-
-    context_block = "\n\n".join(d["content"] for d in source_docs)
     scoped_input = (
-        f"The following documents are the ONLY source of truth for this question. "
-        f"Do not use any other knowledge or documents.\n\n"
-        f"{context_block}\n\n"
+        f"[SCOPE] user_id: {auth_ctx.uid} | workspace_id: {request.workspace_id}\n\n"
         f"user_question: {request.message}"
     )
     payload = {"input": scoped_input, "agent_id": AGENT_ID}

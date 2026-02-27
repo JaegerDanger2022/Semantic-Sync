@@ -23638,7 +23638,13 @@
           const incoming = Array.isArray(message.projects) ? message.projects : [];
           setProjects(incoming);
           if (incoming.length > 0) {
-            setActiveProject((prev) => prev ?? incoming[0]);
+            setActiveProject((prev) => {
+              if (prev == null) {
+                vscode2.postMessage({ type: "filterProject", project: incoming[0] });
+                return incoming[0];
+              }
+              return prev;
+            });
           }
         } else if (message?.type === "setHasBeenIndexed") {
           setHasBeenIndexed(Boolean(message.hasBeenIndexed));

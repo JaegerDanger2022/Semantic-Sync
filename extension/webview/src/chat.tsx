@@ -87,9 +87,15 @@ export function Chat({ vscode }: ChatProps) {
       } else if (message?.type === 'setProjects') {
         const incoming = Array.isArray(message.projects) ? (message.projects as string[]) : [];
         setProjects(incoming);
-        // Auto-select the first project if nothing is selected yet
+        // Auto-select the first project if nothing is selected yet, and notify the extension
         if (incoming.length > 0) {
-          setActiveProject(prev => prev ?? incoming[0]);
+          setActiveProject(prev => {
+            if (prev == null) {
+              vscode.postMessage({ type: 'filterProject', project: incoming[0] });
+              return incoming[0];
+            }
+            return prev;
+          });
         }
       } else if (message?.type === 'setHasBeenIndexed') {
         setHasBeenIndexed(Boolean(message.hasBeenIndexed));
