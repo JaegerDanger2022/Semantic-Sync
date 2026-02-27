@@ -43,22 +43,6 @@ SUBSCRIPTION_LIMITS: Dict[str, Optional[int]] = {
 }
 DEFAULT_TIER = "free"
 
-AGENT_ROUTING_PROMPT = (
-    "You are answering questions about one or more code workspaces indexed in Elasticsearch.\n"
-    "Each retrieved document contains a [Project: <name> | File: <path>] header, "
-    "a plain-English summary, and a short code snippet (≤2000 chars). "
-    "The full source is stored in the raw_code field — query it only when the snippet is insufficient.\n"
-    "Use this policy:\n"
-    "1) For broad questions (overview, architecture, what the project does), use the workspace summary doc first.\n"
-    "2) For specific questions (function logic, edge cases), use the file summary + snippet; "
-    "fetch raw_code only if you need the exact implementation.\n"
-    "3) If summary and raw_code conflict, trust raw_code.\n"
-    "4) Every sentence that references a file MUST include a citation: "
-    "[Project: <project_name> | File: <file_path>]\n"
-    "5) Be concise. Avoid pasting large code blocks unless directly asked.\n"
-    "6) IMPORTANT: Only retrieve and cite documents whose [Project: <name>] exactly matches "
-    "the workspace_id provided below. Ignore all documents from other projects."
-)
 
 app = FastAPI(title="Semantic Sync API")
 
@@ -89,7 +73,6 @@ class IngestRequest(BaseModel):
 class ChatRequest(BaseModel):
     workspace_id: str
     message: str
-    project_filter: Optional[str] = None
 
 
 class SummarizeRequest(BaseModel):
@@ -673,12 +656,10 @@ async def chat_stream(request: ChatRequest, auth_ctx: AuthContext = Depends(requ
         "kbn-xsrf": "true",
         "Content-Type": "application/json",
     }
-    project_line = f"project_filter: {request.project_filter}\n" if request.project_filter else ""
     scoped_input = (
-        f"{AGENT_ROUTING_PROMPT}\n\n"
-        f"user_id: {auth_ctx.uid}\n"
-        f"workspace_id: {request.workspace_id}\n"
-        f"{project_line}"
+        f"[SCOPE] user_id: {auth_ctx.uid} | workspace_id: {request.workspace_id}\n"
+        f"Only retrieve documents where user_id={auth_ctx.uid} AND workspace_id={request.workspace_id}. "
+        f"Do not use documents from any other workspace.\n\n"
         f"user_question: {request.message}"
     )
     payload = {"input": scoped_input, "agent_id": AGENT_ID}
@@ -789,12 +770,10 @@ async def chat(request: ChatRequest, auth_ctx: AuthContext = Depends(require_aut
         "kbn-xsrf": "true",
         "Content-Type": "application/json",
     }
-    project_line = f"project_filter: {request.project_filter}\n" if request.project_filter else ""
     scoped_input = (
-        f"{AGENT_ROUTING_PROMPT}\n\n"
-        f"user_id: {auth_ctx.uid}\n"
-        f"workspace_id: {request.workspace_id}\n"
-        f"{project_line}"
+        f"[SCOPE] user_id: {auth_ctx.uid} | workspace_id: {request.workspace_id}\n"
+        f"Only retrieve documents where user_id={auth_ctx.uid} AND workspace_id={request.workspace_id}. "
+        f"Do not use documents from any other workspace.\n\n"
         f"user_question: {request.message}"
     )
     payload = {"input": scoped_input, "agent_id": AGENT_ID}
