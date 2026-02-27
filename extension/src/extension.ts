@@ -171,24 +171,21 @@ export function activate(context: vscode.ExtensionContext) {
     async () => {
       await signOut(context);
     },
+    // workspaceId === gitRemote, so proj is already the owner/repo slug
     (proj?: string) => {
+      if (proj) {
+        return proj;
+      }
+      const folders = vscode.workspace.workspaceFolders;
+      const rootPath = folders?.[0]?.uri.fsPath;
+      if (!rootPath) {
+        return null;
+      }
       const stored =
         context.globalState.get<Record<string, WorkspaceEntry>>(
           WORKSPACE_ID_KEY,
         ) ?? {};
-      // If a proj (workspaceId) is provided, find the matching entry by workspaceId
-      if (proj) {
-        const match = Object.values(stored).find(
-          (e) => e.workspaceId === proj,
-        );
-        if (match) {
-          return match.gitRemote;
-        }
-      }
-      // Fall back to the current workspace's git remote
-      const folders = vscode.workspace.workspaceFolders;
-      const rootPath = folders?.[0]?.uri.fsPath;
-      return rootPath ? (stored[rootPath]?.gitRemote ?? null) : null;
+      return stored[rootPath]?.gitRemote ?? null;
     },
     () => {
       const folders = vscode.workspace.workspaceFolders;
@@ -670,11 +667,11 @@ async function readGitRemote(rootUri: vscode.Uri): Promise<string | null> {
 }
 
 /**
- * Get (and confirm) the workspace entry for the current root folder.
- * - Requires a git remote — blocks and shows instructions if missing.
- * - On first index, prompts the user to confirm/rename the workspace ID.
+ * Get the workspace entry for the current root folder.
+ * - Requires a git remote — shows an error with instructions if missing.
+ * - workspace_id is always the git remote slug (owner/repo) — not user-editable.
  * - Persists to globalState so incremental saves reuse it silently.
- * Returns undefined if the user cancels or prerequisites aren't met.
+ * Returns undefined if prerequisites aren't met.
  */
 async function getOrAskWorkspaceEntry(
   context: vscode.ExtensionContext,
@@ -686,21 +683,15 @@ async function getOrAskWorkspaceEntry(
     context.globalState.get<Record<string, WorkspaceEntry>>(WORKSPACE_ID_KEY) ??
     {};
 
-  // Already confirmed — return cached entry
-  if (stored[rootPath]) {
-    return stored[rootPath];
-  }
-
-  if (!prompt) {
-    // Incremental save: no entry yet, skip silently until user runs full index
-    return undefined;
-  }
-
-  // --- Require a git remote ---
+  // Always re-read the git remote in case it changed, but use cache if remote matches
   const gitRemote = await readGitRemote(rootUri);
+
   if (!gitRemote) {
+    if (!prompt) {
+      return undefined;
+    }
     const choice = await vscode.window.showErrorMessage(
-      "Semantic Sync requires a GitHub remote to uniquely identify this workspace. " +
+      "Semantic Sync requires a GitHub remote origin to identify this workspace. " +
         "Add a remote origin and try again.",
       "How to add a remote",
     );
@@ -714,27 +705,14 @@ async function getOrAskWorkspaceEntry(
     return undefined;
   }
 
-  // Pre-fill with the GitHub slug (owner/repo) — clean, unique, semantic
-  const chosen = await vscode.window.showInputBox({
-    title: "Semantic Sync — Confirm workspace name",
-    prompt:
-      "Detected from your GitHub remote. Edit if needed — this name identifies the project in your index.",
-    value: gitRemote,
-    validateInput: (v) => {
-      const trimmed = v.trim();
-      if (!trimmed) return "Name cannot be empty.";
-      if (/[^a-zA-Z0-9/_\-.]/.test(trimmed))
-        return "Use only letters, numbers, /, _, -, or .";
-      return undefined;
-    },
-  });
-
-  if (!chosen) {
-    return undefined; // user cancelled
+  // If cached entry exists and remote hasn't changed, return it
+  if (stored[rootPath]?.gitRemote === gitRemote) {
+    return stored[rootPath];
   }
 
+  // workspace_id is always the git remote slug — never user-editable
   const entry: WorkspaceEntry = {
-    workspaceId: chosen.trim(),
+    workspaceId: gitRemote,
     gitRemote,
     localRootPath: rootPath,
   };
