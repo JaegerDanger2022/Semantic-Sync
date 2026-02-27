@@ -23752,7 +23752,13 @@
           "div",
           {
             className: "md",
-            dangerouslySetInnerHTML: { __html: renderMarkdown(msg.content) }
+            dangerouslySetInnerHTML: { __html: renderMarkdown(msg.content) },
+            onClick: (e) => {
+              const btn = e.target.closest("[data-file]");
+              if (btn) {
+                vscode2.postMessage({ type: "openFile", proj: btn.dataset.proj, file: btn.dataset.file });
+              }
+            }
           }
         ), isStreamingThis && /* @__PURE__ */ import_react.default.createElement("span", { className: "stream-cursor" }));
       }
@@ -23823,7 +23829,9 @@
       return parts.map((part) => {
         const cite = part.match(/^\[Project:\s*([^\]|]+)\s*\|\s*File:\s*([^\]]+)\]$/);
         if (cite) {
-          return `<span class="citation"><span class="citation-proj">${escapeHtml(cite[1].trim())}</span><span class="citation-sep">\u203A</span><span class="citation-file">${escapeHtml(cite[2].trim())}</span></span>`;
+          const proj = escapeHtml(cite[1].trim());
+          const file = escapeHtml(cite[2].trim());
+          return `<button class="citation" data-proj="${proj}" data-file="${file}" title="Open ${file}"><span class="citation-proj">${proj}</span><span class="citation-sep">\u203A</span><span class="citation-file">${file}</span></button>`;
         }
         const bold = part.match(/^\*\*([^*]+)\*\*$/);
         if (bold) return `<strong>${escapeHtml(bold[1])}</strong>`;

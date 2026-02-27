@@ -171,6 +171,37 @@ export function activate(context: vscode.ExtensionContext) {
     async () => {
       await signOut(context);
     },
+    (proj?: string) => {
+      const stored =
+        context.globalState.get<Record<string, WorkspaceEntry>>(
+          WORKSPACE_ID_KEY,
+        ) ?? {};
+      // If a proj (workspaceId) is provided, find the matching entry by workspaceId
+      if (proj) {
+        const match = Object.values(stored).find(
+          (e) => e.workspaceId === proj,
+        );
+        if (match) {
+          return match.gitRemote;
+        }
+      }
+      // Fall back to the current workspace's git remote
+      const folders = vscode.workspace.workspaceFolders;
+      const rootPath = folders?.[0]?.uri.fsPath;
+      return rootPath ? (stored[rootPath]?.gitRemote ?? null) : null;
+    },
+    () => {
+      const folders = vscode.workspace.workspaceFolders;
+      const rootPath = folders?.[0]?.uri.fsPath;
+      if (!rootPath) {
+        return undefined;
+      }
+      const stored =
+        context.globalState.get<Record<string, WorkspaceEntry>>(
+          WORKSPACE_ID_KEY,
+        ) ?? {};
+      return stored[rootPath]?.workspaceId;
+    },
   );
   const chatDisposable = vscode.window.registerWebviewViewProvider(
     "semanticSync.chatView",

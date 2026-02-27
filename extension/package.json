@@ -2,7 +2,7 @@
   "name": "semantic-sync",
   "displayName": "Semantic Sync",
   "description": "Index local project files into Elasticsearch Serverless and chat via a VS Code sidebar.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "MartinMensah-Solomon",
   "repository": {
     "type": "git",

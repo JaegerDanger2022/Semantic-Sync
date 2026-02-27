@@ -55,7 +55,9 @@ AGENT_ROUTING_PROMPT = (
     "3) If summary and raw_code conflict, trust raw_code.\n"
     "4) Every sentence that references a file MUST include a citation: "
     "[Project: <project_name> | File: <file_path>]\n"
-    "5) Be concise. Avoid pasting large code blocks unless directly asked."
+    "5) Be concise. Avoid pasting large code blocks unless directly asked.\n"
+    "6) IMPORTANT: Only retrieve and cite documents whose [Project: <name>] exactly matches "
+    "the workspace_id provided below. Ignore all documents from other projects."
 )
 
 app = FastAPI(title="Semantic Sync API")

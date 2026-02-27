@@ -5,7 +5,13 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\(''scripts'',{}\\), indent=2\\)\\)\")",
       "Bash(npm run build:webview)",
       "Bash(.venv/Scripts/pip install anthropic)",
-      "Bash(curl -s http://localhost:8000/docs)"
+      "Bash(curl -s http://localhost:8000/docs)",
+      "Bash(git -C \"c:\\\\Users\\\\mkmen\\\\Documents\\\\GitHub\\\\BUSINESS_REPOS\\\\Semantic Sync\" remote get-url origin)",
+      "Bash(vsce package)",
+      "Bash(xargs grep -l \"sk-\\\\|api_key\\\\|apiKey\\\\|token_uri\\\\|private_key\\\\|client_secret\")",
+      "Bash(git add backend/main.py extension/.vscodeignore extension/README.md extension/media/semantic-sync.svg extension/media/webview.js extension/package.json extension/src/chatView.ts extension/src/extension.ts extension/webview/src/chat.tsx firebase-hosting/auth-callback/index.html firebase-hosting/upgrade/index.html extension/LICENSE extension/media/icon.png)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
     ]
   }
 }

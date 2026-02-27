@@ -47,6 +47,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       }>,
     ) => Promise<void>,
     private readonly doSignOut: () => Promise<void>,
+    /** Returns the "owner/repo" slug for the given workspaceId, falling back to the current workspace */
+    private readonly getGitRemote: (proj?: string) => string | null,
+    /** Returns the confirmed workspaceId from globalState for the current workspace folder */
+    private readonly getConfirmedWorkspaceId: () => string | undefined,
   ) {}
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -146,6 +150,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
         return;
       }
+      if (message?.type === "openFile") {
+        const filePath = typeof message.file === "string" ? message.file : null;
+        if (!filePath) {
+          return;
+        }
+        const proj = typeof message.proj === "string" ? message.proj : undefined;
+        const gitRemote = this.getGitRemote(proj);
+        if (!gitRemote) {
+          vscode.window.showWarningMessage(
+            "Cannot open on GitHub: no git remote found for this workspace.",
+          );
+          return;
+        }
+        // Normalise path separators and strip leading slash
+        const cleanPath = filePath.replace(/\\/g, "/").replace(/^\//, "");
+        const url = `https://github.com/${gitRemote}/blob/main/${cleanPath}`;
+        void vscode.env.openExternal(vscode.Uri.parse(url));
+        return;
+      }
     });
   }
 
@@ -162,7 +185,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async handleUserMessage(content: string): Promise<void> {
-    const workspaceId = this.getWorkspaceId();
+    // Use the activeProject filter as the workspace_id when set — it is the
+    // confirmed project name and correctly scopes the agent to that project.
+    // Otherwise fall back to the confirmed globalState workspaceId, then the folder name.
+    const workspaceId =
+      this.activeProject ??
+      this.getConfirmedWorkspaceId() ??
+      this.getWorkspaceId();
     if (!workspaceId) {
       vscode.window.showErrorMessage(
         "Semantic Sync: No workspace folder is open.",
@@ -200,7 +229,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       body: JSON.stringify({
         workspace_id: workspaceId,
         message: content,
-        ...(this.activeProject ? { project_filter: this.activeProject } : {}),
       }),
     });
 
@@ -639,6 +667,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       vertical-align: baseline;
       line-height: 1.4;
       word-break: break-all;
+      cursor: pointer;
+      font-family: inherit;
+      outline: none;
+    }
+    .citation:hover {
+      border-color: var(--vscode-focusBorder);
+      opacity: 0.85;
     }
     .citation-proj { font-weight: 600; opacity: 0.85; }
     .citation-sep { opacity: 0.5; margin: 0 1px; }
